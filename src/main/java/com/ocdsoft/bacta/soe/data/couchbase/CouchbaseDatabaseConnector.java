@@ -1,13 +1,13 @@
 package com.ocdsoft.bacta.soe.data.couchbase;
 
-import com.couchbase.client.protocol.views.*;
-import com.ocdsoft.bacta.engine.conf.BactaConfiguration;
-import com.ocdsoft.bacta.engine.data.DatabaseConnector;
 import com.couchbase.client.CouchbaseClient;
 import com.couchbase.client.CouchbaseConnectionFactory;
+import com.couchbase.client.protocol.views.*;
 import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
+import com.ocdsoft.bacta.engine.conf.BactaConfiguration;
+import com.ocdsoft.bacta.engine.data.DatabaseConnector;
 import com.ocdsoft.bacta.engine.object.NetworkObject;
 import com.ocdsoft.bacta.engine.object.account.Account;
 import net.spy.memcached.ConnectionObserver;
@@ -22,7 +22,7 @@ import java.util.*;
  * Created by kburkhardt on 2/23/14.
  */
 @Singleton
-public class CouchbaseDatabaseConnector implements DatabaseConnector {
+public final class CouchbaseDatabaseConnector implements DatabaseConnector {
 
     private final Logger logger = LoggerFactory.getLogger(getClass().getSimpleName());
 
