@@ -2,7 +2,7 @@ package com.ocdsoft.bacta.soe.data.couchbase;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.ocdsoft.bacta.engine.data.DatabaseConnector;
+import com.ocdsoft.bacta.engine.data.GameDatabaseConnector;
 import com.ocdsoft.bacta.engine.object.NetworkIdGenerator;
 
 /**
@@ -11,15 +11,15 @@ import com.ocdsoft.bacta.engine.object.NetworkIdGenerator;
 @Singleton
 public class CouchbaseNetworkIdGenerator implements NetworkIdGenerator {
 
-    private final DatabaseConnector databaseConnector;
+    private final GameDatabaseConnector gameDatabaseConnector;
 
     @Inject
-    public CouchbaseNetworkIdGenerator(DatabaseConnector databaseConnector) {
-        this.databaseConnector = databaseConnector;
+    public CouchbaseNetworkIdGenerator(GameDatabaseConnector gameDatabaseConnector) {
+        this.gameDatabaseConnector = gameDatabaseConnector;
     }
 
     public long next() {
-        return databaseConnector.nextId();
+        return gameDatabaseConnector.nextId();
     }
 
 }

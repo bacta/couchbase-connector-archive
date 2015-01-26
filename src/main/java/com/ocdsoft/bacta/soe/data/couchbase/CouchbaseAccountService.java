@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.google.inject.Provider;
 import com.google.inject.Singleton;
 import com.ocdsoft.bacta.engine.conf.BactaConfiguration;
+import com.ocdsoft.bacta.engine.data.ConnectionDatabaseConnector;
 import com.ocdsoft.bacta.engine.object.account.Account;
 import com.ocdsoft.bacta.engine.security.authenticator.AccountService;
 import com.ocdsoft.bacta.engine.security.password.PasswordHash;
@@ -19,25 +20,32 @@ import java.security.SecureRandom;
 @Singleton
 public class CouchbaseAccountService<T extends Account> implements AccountService<T> {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass().getSimpleName());
+    private static final Logger logger = LoggerFactory.getLogger(CouchbaseAccountService.class);
 
-    @Inject
-    private CouchbaseDatabaseConnector connector;
+    private final ConnectionDatabaseConnector connector;
 
-    @Inject
-    private Provider<T> accountProvider;
+    private final Provider<T> accountProvider;
 
-    @Inject
-    private PasswordHash passwordHash;
+    private final PasswordHash passwordHash;
 
-    private final SecureRandom secureRandom = new SecureRandom();
+    private final SecureRandom secureRandom;
 
     private final long authTokenDuration;
 
     private final Class<? extends Account> accountClazz;
 
     @Inject
-    private CouchbaseAccountService(BactaConfiguration configuration, T accountClazz) {
+    private CouchbaseAccountService(final BactaConfiguration configuration,
+                                    final ConnectionDatabaseConnector connector,
+                                    final Provider<T> accountProvider,
+                                    final PasswordHash passwordHash,
+                                    final T accountClazz) {
+
+        this.connector = connector;
+        this.accountProvider = accountProvider;
+        this.passwordHash = passwordHash;
+        secureRandom = new SecureRandom();
+
         authTokenDuration = configuration.getLongWithDefault("Bacta/LoginServer", "AuthTokenTTL", 600) * 1000;
         this.accountClazz = accountClazz.getClass();
     }
@@ -51,7 +59,7 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
         try {
 
             account.setPassword(passwordHash.createHash(password));
-            connector.createAdminObject(account.getUsername(), account);
+            connector.createObject(account.getUsername(), account);
             return account;
 
         } catch (Exception e) {
@@ -62,7 +70,7 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
 
     @Override
     public T getAccount(String username) {
-        return (T) connector.getAdminObject(username, accountClazz);
+        return (T) connector.getObject(username, accountClazz);
     }
 
     @Override
@@ -76,7 +84,7 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
 
     @Override
     public void updateAccount(T account) {
-        connector.updateAdminObject(account.getUsername(), account);
+        connector.updateObject(account.getUsername(), account);
     }
 
     @Override

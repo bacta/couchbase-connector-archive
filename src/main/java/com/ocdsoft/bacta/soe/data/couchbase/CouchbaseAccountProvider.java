@@ -19,7 +19,7 @@ public class CouchbaseAccountProvider<T extends Account> implements Provider<T> 
     private static final Logger logger = LoggerFactory.getLogger(CouchbaseAccountProvider.class);
 
     @Inject
-    private CouchbaseDatabaseConnector connector;
+    private CouchbaseConnectionDatabaseConnector connector;
 
     private final Class accountClass;
     private final Constructor<T> accountConstructor;

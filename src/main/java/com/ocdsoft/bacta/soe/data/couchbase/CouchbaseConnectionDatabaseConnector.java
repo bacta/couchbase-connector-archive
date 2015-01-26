@@ -7,8 +7,7 @@ import com.google.gson.Gson;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.ocdsoft.bacta.engine.conf.BactaConfiguration;
-import com.ocdsoft.bacta.engine.data.DatabaseConnector;
-import com.ocdsoft.bacta.engine.object.NetworkObject;
+import com.ocdsoft.bacta.engine.data.ConnectionDatabaseConnector;
 import com.ocdsoft.bacta.engine.object.account.Account;
 import net.spy.memcached.ConnectionObserver;
 import org.slf4j.Logger;
@@ -19,17 +18,16 @@ import java.net.URI;
 import java.util.*;
 
 /**
- * Created by kburkhardt on 2/23/14.
+ * Created by kburkhardt on 1/23/15.
  */
 @Singleton
-public final class CouchbaseDatabaseConnector implements DatabaseConnector {
+public final class CouchbaseConnectionDatabaseConnector implements ConnectionDatabaseConnector {
 
-    private final Logger logger = LoggerFactory.getLogger(getClass().getSimpleName());
+    private static final Logger logger = LoggerFactory.getLogger(CouchbaseConnectionDatabaseConnector.class);
 
     private final CouchbaseTranscoder transcoder;
 
     private CouchbaseClient client;
-    private CouchbaseClient adminClient;
     private final Gson gson;
 
     private View usernameView;
@@ -37,7 +35,7 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
     private View characterNamesView;
 
     @Inject
-    public CouchbaseDatabaseConnector(BactaConfiguration configuration, CouchbaseTranscoder transcoder) throws Exception {
+    public CouchbaseConnectionDatabaseConnector(BactaConfiguration configuration, CouchbaseTranscoder transcoder) throws Exception {
         this.transcoder = transcoder;
 
         gson = new Gson();
@@ -47,14 +45,9 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
         System.setProperties(systemProperties);
 
         client = connect(
-                configuration.getStringWithDefault("Bacta/Database", "Address", "127.0.0.1"),
-                configuration.getIntWithDefault("Bacta/Database", "Port", 8091),
-                configuration.getStringWithDefault("Bacta/Database", "GameObjectsBucket", "gameObjects"));
-
-        adminClient = connect(
-                configuration.getStringWithDefault("Bacta/Database", "Address", "127.0.0.1"),
-                configuration.getIntWithDefault("Bacta/Database", "Port", 8091),
-                configuration.getStringWithDefault("Bacta/Database", "AdminObjectsBucket", "adminObjects"));
+                configuration.getString("Bacta/Database/Couchbase", "Address"),
+                configuration.getInt("Bacta/Database/Couchbase", "Port", 8091),
+                configuration.getString("Bacta/Database/Couchbase", "ConnectionObjectsBucket"));
 
         init(configuration);
     }
@@ -62,32 +55,29 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
     private void init(BactaConfiguration configuration) {
 
         try {
-            if (adminClient.get("NetworkId") == null) {
-                adminClient.add("NetworkId", String.valueOf(4294967296L));
+
+            if (client.get("ClusterId") == null) {
+                client.add("ClusterId", String.valueOf(1));
 
             }
-            if (adminClient.get("ClusterId") == null) {
-                adminClient.add("ClusterId", String.valueOf(1));
-
-            }
-            if (adminClient.get("AccountId") == null) {
-                adminClient.add("AccountId", String.valueOf(1));
+            if (client.get("AccountId") == null) {
+                client.add("AccountId", String.valueOf(1));
             }
 
-            String designDoc = configuration.getStringWithDefault("Bacta/Database", "DesignDoc", "accounts");
-            String userview = configuration.getStringWithDefault("Bacta/Database", "UsernameView", "Username");
+            String designDoc = configuration.getString("Bacta/Database/Couchbase", "DesignDoc");
+            String userview = configuration.getString("Bacta/Database/Couchbase", "UsernameView");
 
             DesignDocument design;
             boolean changed = false;
 
             try {
-                design = adminClient.getDesignDoc(designDoc);
+                design = client.getDesignDoc(designDoc);
             } catch(Exception e) {
                 design = new DesignDocument(designDoc);
             }
 
             try {
-                usernameView = adminClient.getView(designDoc, userview);
+                usernameView = client.getView(designDoc, userview);
             } catch (InvalidViewException e) {
                 changed = true;
                 String map = "function (doc, meta) {\n" +
@@ -99,17 +89,17 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
                 ViewDesign viewDesign = new ViewDesign(userview, map);
                 design.getViews().add(viewDesign);
 
-                if (adminClient.createDesignDoc(design)) {
-                    usernameView = adminClient.getView(designDoc, userview);
+                if (client.createDesignDoc(design)) {
+                    usernameView = client.getView(designDoc, userview);
                 } else {
                     throw new Exception("Unable to create username views");
                 }
             }
 
-            String authview = configuration.getStringWithDefault("Bacta/Database", "AuthTokenView", "AuthToken");
+            String authview = configuration.getString("Bacta/Database/Couchbase", "AuthTokenView");
 
             try {
-                 authTokenView = adminClient.getView(designDoc, authview);
+                 authTokenView = client.getView(designDoc, authview);
             } catch (InvalidViewException e) {
                 changed = true;
                 String map = "function (doc, meta) {\n" +
@@ -124,10 +114,10 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
 
             }
 
-            String characterNamesViewName = configuration.getStringWithDefault("Bacta/Database", "CharacterNamesView ", "CharacterNames");
+            String characterNamesViewName = configuration.getString("Bacta/Database/Couchbase", "CharacterNamesView");
 
             try {
-                characterNamesView = adminClient.getView(designDoc, characterNamesViewName);
+                characterNamesView = client.getView(designDoc, characterNamesViewName);
             } catch (InvalidViewException e) {
                 changed = true;
                 String map = "function (doc, meta) {\n" +
@@ -143,13 +133,13 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
             }
 
             if(changed) {
-                if(!adminClient.createDesignDoc(design)) {
+                if(!client.createDesignDoc(design)) {
                     throw new Exception("Unable to obtain database views");
                 }
 
-                usernameView = adminClient.getView(designDoc, userview);
-                authTokenView = adminClient.getView(designDoc, authview);
-                characterNamesView = adminClient.getView(designDoc, characterNamesViewName);
+                usernameView = client.getView(designDoc, userview);
+                authTokenView = client.getView(designDoc, authview);
+                characterNamesView = client.getView(designDoc, characterNamesViewName);
             }
 
         } catch(Exception e) {
@@ -193,59 +183,33 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
     }
 
     @Override
-    public long nextId() {
-        return adminClient.incr("NetworkId", 1);
-    }
-
-    @Override
     public long nextClusterId() {
-        return adminClient.incr("ClusterId", 1);
+        return client.incr("ClusterId", 1);
     }
 
     @Override
     public int nextAccountId() {
-        return (int) adminClient.incr("AccountId", 1);
+        return (int) client.incr("AccountId", 1);
     }
 
     @Override
-    public <T extends NetworkObject> T getNetworkObject(String key) {
-        return (T) client.get(key, transcoder);
-    }
+    public <T> T getObject(String key, Class<T> clazz) {
 
-    @Override
-    public <T extends NetworkObject> T getNetworkObject(long key) {
-        return getNetworkObject(String.valueOf(key));
-    }
-
-
-    @Override
-    public <T extends NetworkObject> void createNetworkObject(T object) {
-        client.add(String.valueOf(object.getNetworkId()), 0, object, transcoder);
-    }
-
-    @Override
-    public <T extends NetworkObject> void updateNetworkObject(T object) {
-        client.set(String.valueOf(object.getNetworkId()), 0, object, transcoder);
-    }
-
-    @Override
-    public <T> T getAdminObject(String key, Class<T> clazz) {
-
-        Object object = adminClient.get(key);
+        Object object = client.get(key);
         if(object == null) return null;
 
         return gson.fromJson(object.toString(), clazz);
     }
 
     @Override
-    public <T> void updateAdminObject(String key, T object) {
-        adminClient.set(key, gson.toJson(object));
+    public <T> void updateObject(String key, T object) {
+        client.set(key, gson.toJson(object));
     }
 
 
     @Override
-    public <T> void createAdminObject(String key, T object) {
-        adminClient.add(key, gson.toJson(object));
+    public <T> void createObject(String key, T object) {
+        client.add(key, gson.toJson(object));
     }
 
     @Override
@@ -255,7 +219,7 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
         userQuery.setKey("\"" + authToken + "\"");
         userQuery.setStale(Stale.FALSE);
 
-        ViewResponse response = adminClient.query(authTokenView, userQuery);
+        ViewResponse response = client.query(authTokenView, userQuery);
         if(response.size() == 0) {
             return null;
         }
@@ -275,7 +239,7 @@ public final class CouchbaseDatabaseConnector implements DatabaseConnector {
         userQuery.setIncludeDocs(true);
         userQuery.setStale(Stale.FALSE);
 
-        ViewResponse response = adminClient.query(characterNamesView, userQuery);
+        ViewResponse response = client.query(characterNamesView, userQuery);
 
         Set<String> characters = new TreeSet<>();
 
