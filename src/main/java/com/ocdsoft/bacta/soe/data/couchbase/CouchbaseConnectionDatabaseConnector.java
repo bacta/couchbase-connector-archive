@@ -45,9 +45,9 @@ public final class CouchbaseConnectionDatabaseConnector implements ConnectionDat
         System.setProperties(systemProperties);
 
         client = connect(
-                configuration.getString("Bacta/Database/Couchbase", "Address"),
-                configuration.getInt("Bacta/Database/Couchbase", "Port", 8091),
-                configuration.getString("Bacta/Database/Couchbase", "ConnectionObjectsBucket"));
+                configuration.getStringWithDefault("Bacta/Database/Couchbase", "Address", "127.0.0.1"),
+                configuration.getIntWithDefault("Bacta/Database/Couchbase", "Port", 8091),
+                configuration.getStringWithDefault("Bacta/Database/Couchbase", "ConnectionObjectsBucket", "connectionObjects"));
 
         init(configuration);
     }
@@ -183,8 +183,8 @@ public final class CouchbaseConnectionDatabaseConnector implements ConnectionDat
     }
 
     @Override
-    public long nextClusterId() {
-        return client.incr("ClusterId", 1);
+    public int nextClusterId() {
+        return (int) client.incr("ClusterId", 1);
     }
 
     @Override
