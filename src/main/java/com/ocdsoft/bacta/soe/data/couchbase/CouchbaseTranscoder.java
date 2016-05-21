@@ -2,7 +2,7 @@ package com.ocdsoft.bacta.soe.data.couchbase;
 
 import com.google.inject.Inject;
 import com.ocdsoft.bacta.engine.object.NetworkObject;
-import com.ocdsoft.bacta.engine.serialization.NetworkSerializer;
+import com.ocdsoft.bacta.engine.serialize.NetworkSerializer;
 import net.spy.memcached.CachedData;
 import net.spy.memcached.transcoders.BaseSerializingTranscoder;
 import net.spy.memcached.transcoders.Transcoder;
