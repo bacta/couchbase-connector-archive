@@ -4,6 +4,7 @@ import com.couchbase.client.CouchbaseClient;
 import com.couchbase.client.CouchbaseConnectionFactory;
 import com.couchbase.client.protocol.views.*;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.ocdsoft.bacta.engine.conf.BactaConfiguration;
@@ -13,6 +14,7 @@ import net.spy.memcached.ConnectionObserver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.URI;
 import java.util.*;
@@ -38,7 +40,7 @@ public final class CouchbaseConnectionDatabaseConnector implements ConnectionDat
     public CouchbaseConnectionDatabaseConnector(BactaConfiguration configuration, CouchbaseTranscoder transcoder) throws Exception {
         this.transcoder = transcoder;
 
-        gson = new Gson();
+        gson = registerSerializers();
 
         Properties systemProperties = System.getProperties();
         systemProperties.put("net.spy.log.LoggerImpl", "net.spy.memcached.compat.log.SLF4JLogger");
@@ -50,6 +52,13 @@ public final class CouchbaseConnectionDatabaseConnector implements ConnectionDat
                 configuration.getStringWithDefault("Bacta/Database/Couchbase", "ConnectionObjectsBucket", "connectionObjects"));
 
         init(configuration);
+    }
+
+    private Gson registerSerializers() {
+        GsonBuilder gsonBuilder = new GsonBuilder();
+        gsonBuilder.registerTypeAdapter(InetSocketAddress.class, new InetSocketAddressSerializer());
+
+        return gsonBuilder.create();
     }
 
     private void init(BactaConfiguration configuration) {
