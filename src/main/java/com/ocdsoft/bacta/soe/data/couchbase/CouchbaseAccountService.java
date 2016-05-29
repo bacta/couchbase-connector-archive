@@ -6,8 +6,8 @@ import com.google.inject.Singleton;
 import com.ocdsoft.bacta.engine.conf.BactaConfiguration;
 import com.ocdsoft.bacta.engine.data.ConnectionDatabaseConnector;
 import com.ocdsoft.bacta.engine.object.account.Account;
-import com.ocdsoft.bacta.engine.security.authenticator.AccountService;
-import com.ocdsoft.bacta.engine.security.password.PasswordHash;
+import com.ocdsoft.bacta.engine.service.AccountService;
+import com.ocdsoft.bacta.engine.security.PasswordHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ import java.security.SecureRandom;
 @Singleton
 public class CouchbaseAccountService<T extends Account> implements AccountService<T> {
 
-    private static final Logger logger = LoggerFactory.getLogger(CouchbaseAccountService.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(CouchbaseAccountService.class);
     private final ConnectionDatabaseConnector connector;
     private final Provider<T> accountProvider;
     private final PasswordHash passwordHash;
@@ -58,7 +58,7 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
             return account;
 
         } catch (Exception e) {
-            logger.error("Unable to create account", e);
+            LOGGER.error("Unable to create account", e);
         }
         return null;
     }
@@ -88,7 +88,7 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
         try {
             return passwordHash.validatePassword(password, account.getPassword());
         } catch (Exception e) {
-            logger.error("Unable to authenticate account", e);
+            LOGGER.error("Unable to authenticate account", e);
         }
         return false;
     }
@@ -103,6 +103,7 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
 
             account.setAuthToken("");
             account.setAuthExpiration(System.currentTimeMillis());
+            account.setAuthInetAddress(null);
             updateAccount(account);
 
             return null;
