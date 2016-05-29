@@ -11,6 +11,7 @@ import com.ocdsoft.bacta.engine.security.password.PasswordHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
 import java.security.SecureRandom;
 
 
@@ -21,17 +22,11 @@ import java.security.SecureRandom;
 public class CouchbaseAccountService<T extends Account> implements AccountService<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(CouchbaseAccountService.class);
-
     private final ConnectionDatabaseConnector connector;
-
     private final Provider<T> accountProvider;
-
     private final PasswordHash passwordHash;
-
     private final SecureRandom secureRandom;
-
     private final long authTokenDuration;
-
     private final Class<? extends Account> accountClazz;
 
     @Inject
@@ -69,16 +64,17 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
     }
 
     @Override
-    public T getAccount(String username) {
+    public T getAccount(final String username) {
         return (T) connector.getObject(username, accountClazz);
     }
 
     @Override
-    public void createAuthToken(T account) {
+    public void createAuthToken(final InetAddress address, final T account) {
 
         String authToken = String.valueOf(Math.abs(secureRandom.nextLong())) + String.valueOf(Math.abs(secureRandom.nextLong()));
         account.setAuthToken(authToken);
         account.setAuthExpiration(System.currentTimeMillis() + authTokenDuration);
+        account.setAuthInetAddress(address);
         updateAccount(account);
     }
 
@@ -98,10 +94,13 @@ public class CouchbaseAccountService<T extends Account> implements AccountServic
     }
 
     @Override
-    public T validateSession(String authToken) {
+    public T validateSession(final InetAddress address, final String authToken) {
         T account = (T) connector.lookupSession(authToken, accountClazz);
 
-        if(account != null && account.getAuthExpiration() < System.currentTimeMillis()) {
+        if(account != null &&
+                account.getAuthExpiration() < System.currentTimeMillis() &&
+                account.getAuthInetAddress().equals(address)) {
+
             account.setAuthToken("");
             account.setAuthExpiration(System.currentTimeMillis());
             updateAccount(account);
